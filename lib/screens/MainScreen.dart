@@ -5,6 +5,7 @@ import 'package:test_app/models/record.dart';
 import 'package:test_app/screens/login_screen.dart';
 import 'package:test_app/screens/records_tab.dart';
 import 'package:test_app/screens/vendors_tab.dart';
+import 'package:test_app/screens/reports_tab.dart';
 import '../widgets/dashboard_card.dart';
 
 class MainScreen extends StatefulWidget {
@@ -27,7 +28,7 @@ class _MainScreenState extends State<MainScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -40,7 +41,7 @@ class _MainScreenState extends State<MainScreen>
   void _onFabPressed() {
     if (_tabController.index == 0) {
       _recordsKey.currentState?.showAddDialog();
-    } else {
+    } else if (_tabController.index == 1) {
       _vendorsKey.currentState?.showAddDialog();
     }
   }
@@ -195,6 +196,7 @@ class _MainScreenState extends State<MainScreen>
                   tabs: const [
                     Tab(text: 'Records'),
                     Tab(text: 'Vendors'),
+                    Tab(text: 'Reports'),
                   ],
                 ),
               ),
@@ -206,6 +208,7 @@ class _MainScreenState extends State<MainScreen>
           children: [
             RecordsTab(key: _recordsKey, isAdmin: widget.isAdmin),
             VendorsTab(key: _vendorsKey, isAdmin: widget.isAdmin),
+            ReportsTab(isAdmin: widget.isAdmin),
           ],
         ),
       ),

@@ -85,6 +85,17 @@ class RecordsTabState extends State<RecordsTab> {
     );
   }
 
+  Future<void> _onReceive(RecordModel r, int newlyReceived, String date) async {
+    await _repo.receiveQuantity(
+      recordId: r.id,
+      newlyReceived: newlyReceived,
+      totalQuantity: r.quantity,
+      alreadyReceived: r.receivedQuantity,
+      receiveDate: date,
+    );
+    _load();
+  }
+
   Future<void> _updateStatus(String id, String status) async {
     await _repo.updateStatus(
       recordId: id,
@@ -120,6 +131,7 @@ class RecordsTabState extends State<RecordsTab> {
           isAdmin: widget.isAdmin,
           onEdit: () => _edit(r),
           onDelete: () => _delete(r.id),
+          onReceive: (qty, date) => _onReceive(r, qty, date),
           onStatusChange: (s) => _updateStatus(r.id, s),
         );
       },

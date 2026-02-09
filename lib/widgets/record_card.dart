@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:test_app/models/record.dart';
+import 'package:test_app/models/received_history.dart';
+import 'package:test_app/data/record_repository.dart';
 
 class RecordCard extends StatelessWidget {
   final RecordModel record;
   final bool isAdmin;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+  final Function(int, String) onReceive;
   final Function(String) onStatusChange;
 
   const RecordCard({
@@ -14,11 +17,14 @@ class RecordCard extends StatelessWidget {
     required this.isAdmin,
     required this.onDelete,
     required this.onEdit,
+    required this.onReceive,
     required this.onStatusChange,
   });
 
   @override
   Widget build(BuildContext context) {
+    int remaining = record.quantity - record.receivedQuantity;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -76,6 +82,25 @@ class RecordCard extends StatelessWidget {
                             _buildDetailItem(Icons.assignment_outlined, 'PO', record.poNumber!),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildDetailItem(
+                            Icons.check_circle_outline, 
+                            'Received', 
+                            '${record.receivedQuantity} / ${record.quantity}',
+                            valueColor: remaining > 0 ? Colors.orange : Colors.green,
+                          ),
+                          const SizedBox(width: 24),
+                          if (remaining > 0)
+                            _buildDetailItem(
+                              Icons.pending_actions_outlined, 
+                              'Remaining', 
+                              '$remaining pcs',
+                              valueColor: Colors.redAccent,
+                            ),
+                        ],
+                      ),
                       const Divider(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -95,6 +120,11 @@ class RecordCard extends StatelessWidget {
                                     color: _isOverdue() ? Colors.red : Colors.grey.shade600,
                                     fontWeight: _isOverdue() ? FontWeight.bold : FontWeight.normal,
                                   ),
+                                ),
+                              if (record.actualReturnDate != null && record.actualReturnDate!.isNotEmpty)
+                                Text(
+                                  'Last Received: ${record.actualReturnDate}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
                                 ),
                             ],
                           ),
@@ -125,7 +155,7 @@ class RecordCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailItem(IconData icon, String label, String value) {
+  Widget _buildDetailItem(IconData icon, String label, String value, {Color? valueColor}) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +173,11 @@ class RecordCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 13, 
+              fontWeight: FontWeight.w500,
+              color: valueColor,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -219,8 +253,19 @@ class RecordCard extends StatelessWidget {
       onSelected: (val) {
         if (val == 'edit') onEdit();
         if (val == 'delete') onDelete();
+        if (val == 'receive') _showReceiveDialog(context);
       },
       itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'receive',
+          child: Row(
+            children: [
+              Icon(Icons.download_for_offline_outlined, size: 18, color: Colors.green),
+              SizedBox(width: 12),
+              Text('Receive Qty'),
+            ],
+          ),
+        ),
         const PopupMenuItem(
           value: 'edit',
           child: Row(
@@ -243,6 +288,102 @@ class RecordCard extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  void _showReceiveDialog(BuildContext context) {
+    final ctrl = TextEditingController();
+    DateTime receiveDate = DateTime.now();
+    int remaining = record.quantity - record.receivedQuantity;
+    final repo = RecordRepository();
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Receive Quantity'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Remaining Qty: $remaining', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: ctrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Enter Newly Received Qty',
+                    hintText: 'Max $remaining',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text("Receive Date: ${receiveDate.toLocal().toString().split(' ')[0]}"),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: receiveDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) setState(() => receiveDate = picked);
+                  },
+                ),
+                const Divider(height: 32),
+                const Text('History', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 8),
+                FutureBuilder<List<ReceivedHistoryModel>>(
+                  future: repo.fetchReceivedHistory(record.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: CircularProgressIndicator(),
+                      ));
+                    }
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Text('No receiving history found', style: TextStyle(color: Colors.grey, fontSize: 12));
+                    }
+                    return Column(
+                      children: snapshot.data!.map((h) => ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${h.quantity} pieces received'),
+                        subtitle: Text('On ${h.receiveDate}'),
+                        leading: const Icon(Icons.history, size: 16),
+                      )).toList(),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newQty = int.tryParse(ctrl.text) ?? 0;
+                if (newQty <= 0 || newQty > remaining) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please enter a valid qty (Max $remaining)')),
+                  );
+                  return;
+                }
+                onReceive(newQty, receiveDate.toIso8601String().split('T')[0]);
+                Navigator.pop(context);
+              },
+              child: const Text('Receive'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

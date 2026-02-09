@@ -1,14 +1,15 @@
 class RecordModel {
   final String id;
-  final String? date; // Added date field
+  final String? date;
   final String challanNumber;
   final String clothType;
   final int quantity;
+  final int receivedQuantity; // Added receivedQuantity
   final String vendorId;
   final String? vendorName;
   final String status;
   final String sentDate;
-  final String? expectedReturnDate; // Made nullable
+  final String? expectedReturnDate;
   final String? actualReturnDate;
   final String? poNumber;
   final String? notes;
@@ -19,6 +20,7 @@ class RecordModel {
     required this.challanNumber,
     required this.clothType,
     required this.quantity,
+    this.receivedQuantity = 0, // Default to 0
     required this.vendorId,
     this.vendorName,
     required this.status,
@@ -35,6 +37,7 @@ class RecordModel {
     String? challanNumber,
     String? clothType,
     int? quantity,
+    int? receivedQuantity,
     String? vendorId,
     String? vendorName,
     String? status,
@@ -50,6 +53,7 @@ class RecordModel {
       challanNumber: challanNumber ?? this.challanNumber,
       clothType: clothType ?? this.clothType,
       quantity: quantity ?? this.quantity,
+      receivedQuantity: receivedQuantity ?? this.receivedQuantity,
       vendorId: vendorId ?? this.vendorId,
       vendorName: vendorName ?? this.vendorName,
       status: status ?? this.status,
@@ -68,6 +72,7 @@ class RecordModel {
       challanNumber: json['challan_number'] ?? '',
       clothType: json['cloth_type'] ?? '',
       quantity: json['quantity'] ?? 0,
+      receivedQuantity: json['received_quantity'] ?? 0, // Map from JSON
       vendorId: json['vendor_id'] ?? '',
       vendorName: json['vendors']?['name'],
       status: json['status'] ?? 'Sent',
@@ -85,6 +90,7 @@ class RecordModel {
       'challan_number': challanNumber,
       'cloth_type': clothType,
       'quantity': quantity,
+      'received_quantity': receivedQuantity, // Include in JSON
       'vendor_id': vendorId,
       'status': status,
       'sent_date': sentDate,

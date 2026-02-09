@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test_app/models/record.dart';
+import 'package:test_app/models/received_history.dart';
 
 class RecordRepository {
   final _client = Supabase.instance.client;
@@ -8,11 +9,24 @@ class RecordRepository {
   Future<List<RecordModel>> fetchRecords() async {
     final res = await _client
         .from('records')
-        .select('*, vendors(name)') // Join with vendors table to get the name
+        .select('*, vendors(name)')
         .order('id', ascending: false);
 
     return (res as List)
         .map((e) => RecordModel.fromJson(e))
+        .toList();
+  }
+
+  /// FETCH RECEIVED HISTORY for a specific record
+  Future<List<ReceivedHistoryModel>> fetchReceivedHistory(String recordId) async {
+    final res = await _client
+        .from('received_history')
+        .select()
+        .eq('record_id', recordId)
+        .order('receive_date', ascending: false);
+
+    return (res as List)
+        .map((e) => ReceivedHistoryModel.fromJson(e))
         .toList();
   }
 
@@ -29,6 +43,37 @@ class RecordRepository {
         .eq('id', record.id);
   }
 
+  /// UPDATE RECEIVED QUANTITY AND ADD TO HISTORY
+  Future<void> receiveQuantity({
+    required String recordId,
+    required int newlyReceived,
+    required int totalQuantity,
+    required int alreadyReceived,
+    required String receiveDate,
+  }) async {
+    final int updatedReceived = alreadyReceived + newlyReceived;
+    String newStatus = 'In Progress';
+    String? actualReturnDate = receiveDate;
+
+    if (updatedReceived >= totalQuantity) {
+      newStatus = 'Returned';
+    }
+
+    // 1. Update the record
+    await _client.from('records').update({
+      'received_quantity': updatedReceived,
+      'status': newStatus,
+      'actual_return_date': actualReturnDate,
+    }).eq('id', recordId);
+
+    // 2. Add entry to history table
+    await _client.from('received_history').insert({
+      'record_id': recordId,
+      'quantity': newlyReceived,
+      'receive_date': receiveDate,
+    });
+  }
+
   /// UPDATE STATUS ONLY
   Future<void> updateStatus({
     required String recordId,
@@ -41,7 +86,7 @@ class RecordRepository {
     }).eq('id', recordId);
   }
 
-  /// DELETE – Admin only (RLS enforced)
+  /// DELETE – Admin only
   Future<void> deleteRecord(String id) async {
     await _client.from('records').delete().eq('id', id);
   }

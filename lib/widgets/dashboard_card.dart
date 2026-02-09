@@ -35,6 +35,7 @@ class DashboardCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -51,7 +52,6 @@ class DashboardCard extends StatelessWidget {
                   color: textColor,
                 ),
               ),
-              // Optional: a small indicator dot
               Container(
                 width: 8,
                 height: 8,
@@ -62,22 +62,23 @@ class DashboardCard extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
+          const Expanded(child: SizedBox(height: 8)), // Fixed: changed minHeight to height
           Text(
             value,
             style: TextStyle(
-              fontSize: 26,
+              fontSize: 24,
               fontWeight: FontWeight.w900,
               color: textColor,
               letterSpacing: -0.5,
             ),
+            maxLines: 1,
           ),
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.black87,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
             maxLines: 1,
