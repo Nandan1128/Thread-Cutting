@@ -12,5 +12,7 @@ flutter config --enable-web
 # 4. Get dependencies
 flutter pub get
 
-# 5. Build the web app
-flutter build web --release
+# 5. Build the web app with injected environment variables
+flutter build web --release \
+  --dart-define=SUPABASE_URL=$SUPABASE_URL \
+  --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
