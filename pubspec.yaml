@@ -14,7 +14,7 @@ dependencies:
   supabase_flutter: ^2.5.6
   intl: ^0.20.2
   cupertino_icons: ^1.0.8
-  flutter_dotenv: ^5.1.0 # Added for environment variables
+  flutter_dotenv: ^5.1.0
 
 dev_dependencies:
   flutter_test:
@@ -32,4 +32,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/
-    - .env # Added .env file to assets
+    - .env # Corrected path
