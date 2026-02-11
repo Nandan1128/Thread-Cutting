@@ -9,6 +9,7 @@ void main() async {
   const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
+
   if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
     runApp(MaterialApp(
       home: Scaffold(
@@ -17,7 +18,7 @@ void main() async {
             'Configuration Error: Supabase keys are missing.\n'
             'Please check Vercel Environment Variables and Redeploy.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
           ),
         ),
       ),
@@ -29,6 +30,7 @@ void main() async {
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
+
 
   runApp(const MyApp());
 }
