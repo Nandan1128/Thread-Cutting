@@ -1,14 +1,7 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "vercel-build.sh",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build/web"
-      }
-    }
-  ],
+  "buildCommand": "bash vercel-build.sh",
+  "outputDirectory": "build/web",
+  "framework": null,
   "rewrites": [
     {
       "source": "/(.*)",
