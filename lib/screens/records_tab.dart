@@ -6,8 +6,9 @@ import '../../dialogs/add_edit_record_dialog.dart';
 
 class RecordsTab extends StatefulWidget {
   final bool isAdmin;
+  final VoidCallback? onDataChanged;
 
-  const RecordsTab({super.key, required this.isAdmin});
+  const RecordsTab({super.key, required this.isAdmin, this.onDataChanged});
 
   @override
   State<RecordsTab> createState() => RecordsTabState();
@@ -35,6 +36,7 @@ class RecordsTabState extends State<RecordsTab> {
         _filteredRecords = records;
         _isLoading = false;
       });
+      widget.onDataChanged?.call(); // Notify MainScreen to refresh dashboard
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -60,8 +62,29 @@ class RecordsTabState extends State<RecordsTab> {
   }
 
   Future<void> _delete(String id) async {
-    await _repo.deleteRecord(id);
-    _load();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Record'),
+        content: const Text('Are you sure you want to delete this record? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('DELETE', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _repo.deleteRecord(id);
+      _load();
+    }
   }
 
   Future<void> _edit(RecordModel record) async {

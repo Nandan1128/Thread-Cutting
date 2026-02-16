@@ -62,6 +62,11 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  // Refresh dashboard data
+  void _refreshDashboard() {
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -206,7 +211,11 @@ class _MainScreenState extends State<MainScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
-            RecordsTab(key: _recordsKey, isAdmin: widget.isAdmin),
+            RecordsTab(
+              key: _recordsKey,
+              isAdmin: widget.isAdmin,
+              onDataChanged: _refreshDashboard, // Connect callback here
+            ),
             VendorsTab(key: _vendorsKey, isAdmin: widget.isAdmin),
             ReportsTab(isAdmin: widget.isAdmin),
           ],
