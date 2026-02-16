@@ -46,27 +46,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
-      return;
+    } else {
+      // Navigate to HomeScreen, which will handle role fetching
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
     }
-
-    final userId = session.user.id;
-    final response = await client
-        .from('app_user')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-    final role = response['role'];
-    goTOHome(role);
-  }
-
-  void goTOHome(String role) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const HomeScreen(),
-      ),
-    );
   }
 
   @override
