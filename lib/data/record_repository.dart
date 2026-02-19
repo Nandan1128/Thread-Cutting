@@ -5,12 +5,13 @@ import 'package:test_app/models/received_history.dart';
 class RecordRepository {
   final _client = Supabase.instance.client;
 
-  /// READ – Get all records with vendor names
+  /// READ – Get all records with vendor names and rates
   Future<List<RecordModel>> fetchRecords() async {
+    // Sorted by challan_number in descending order
     final res = await _client
         .from('records')
-        .select('*, vendors(name)')
-        .order('id', ascending: false);
+        .select('*, vendors(name, rate_per_piece)')
+        .order('challan_number', ascending: false);
 
     return (res as List)
         .map((e) => RecordModel.fromJson(e))

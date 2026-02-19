@@ -4,9 +4,10 @@ class RecordModel {
   final String challanNumber;
   final String clothType;
   final int quantity;
-  final int receivedQuantity; // Added receivedQuantity
+  final int receivedQuantity;
   final String vendorId;
   final String? vendorName;
+  final double? vendorRate; // Added vendorRate field
   final String status;
   final String sentDate;
   final String? expectedReturnDate;
@@ -20,9 +21,10 @@ class RecordModel {
     required this.challanNumber,
     required this.clothType,
     required this.quantity,
-    this.receivedQuantity = 0, // Default to 0
+    this.receivedQuantity = 0,
     required this.vendorId,
     this.vendorName,
+    this.vendorRate,
     required this.status,
     required this.sentDate,
     this.expectedReturnDate,
@@ -40,6 +42,7 @@ class RecordModel {
     int? receivedQuantity,
     String? vendorId,
     String? vendorName,
+    double? vendorRate,
     String? status,
     String? sentDate,
     String? expectedReturnDate,
@@ -56,6 +59,7 @@ class RecordModel {
       receivedQuantity: receivedQuantity ?? this.receivedQuantity,
       vendorId: vendorId ?? this.vendorId,
       vendorName: vendorName ?? this.vendorName,
+      vendorRate: vendorRate ?? this.vendorRate,
       status: status ?? this.status,
       sentDate: sentDate ?? this.sentDate,
       expectedReturnDate: expectedReturnDate ?? this.expectedReturnDate,
@@ -72,9 +76,10 @@ class RecordModel {
       challanNumber: json['challan_number'] ?? '',
       clothType: json['cloth_type'] ?? '',
       quantity: json['quantity'] ?? 0,
-      receivedQuantity: json['received_quantity'] ?? 0, // Map from JSON
+      receivedQuantity: json['received_quantity'] ?? 0,
       vendorId: json['vendor_id'] ?? '',
       vendorName: json['vendors']?['name'],
+      vendorRate: (json['vendors']?['rate_per_piece'] as num?)?.toDouble(), // Fetch rate from joined vendor
       status: json['status'] ?? 'Sent',
       sentDate: json['sent_date'] ?? '',
       expectedReturnDate: json['expected_return_date'],
@@ -90,7 +95,7 @@ class RecordModel {
       'challan_number': challanNumber,
       'cloth_type': clothType,
       'quantity': quantity,
-      'received_quantity': receivedQuantity, // Include in JSON
+      'received_quantity': receivedQuantity,
       'vendor_id': vendorId,
       'status': status,
       'sent_date': sentDate,

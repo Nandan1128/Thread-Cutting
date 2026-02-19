@@ -7,8 +7,16 @@ import '../../dialogs/add_edit_record_dialog.dart';
 class RecordsTab extends StatefulWidget {
   final bool isAdmin;
   final VoidCallback? onDataChanged;
+  final String? poFilter;
+  final List<RecordModel> records; // Required records from parent
 
-  const RecordsTab({super.key, required this.isAdmin, this.onDataChanged});
+  const RecordsTab({
+    super.key,
+    required this.isAdmin,
+    this.onDataChanged,
+    this.poFilter,
+    required this.records,
+  });
 
   @override
   State<RecordsTab> createState() => RecordsTabState();
@@ -16,42 +24,34 @@ class RecordsTab extends StatefulWidget {
 
 class RecordsTabState extends State<RecordsTab> {
   final _repo = RecordRepository();
-  List<RecordModel> _allRecords = [];
   List<RecordModel> _filteredRecords = [];
-  bool _isLoading = true;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _applyLocalFilters();
   }
 
-  Future<void> _load() async {
-    try {
-      setState(() => _isLoading = true);
-      final records = await _repo.fetchRecords();
-      setState(() {
-        _allRecords = records;
-        _filteredRecords = records;
-        _isLoading = false;
-      });
-      widget.onDataChanged?.call(); // Notify MainScreen to refresh dashboard
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+  @override
+  void didUpdateWidget(covariant RecordsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.records != widget.records || oldWidget.poFilter != widget.poFilter) {
+      _applyLocalFilters();
     }
   }
 
+  // Public search method used by MainScreen
   void onSearch(String query) {
     setState(() {
+      final baseList = widget.poFilter != null 
+          ? widget.records.where((r) => (r.poNumber ?? '') == widget.poFilter)
+          : widget.records;
+
       if (query.isEmpty) {
-        _filteredRecords = _allRecords;
+        _filteredRecords = baseList.toList();
       } else {
         final q = query.toLowerCase();
-        _filteredRecords = _allRecords.where((r) {
+        _filteredRecords = baseList.where((r) {
           final challan = r.challanNumber.toLowerCase();
           final po = (r.poNumber ?? '').toLowerCase();
           final vendor = (r.vendorName ?? '').toLowerCase();
@@ -61,17 +61,24 @@ class RecordsTabState extends State<RecordsTab> {
     });
   }
 
+  void _applyLocalFilters() {
+    setState(() {
+      if (widget.poFilter != null) {
+        _filteredRecords = widget.records.where((r) => (r.poNumber ?? '') == widget.poFilter).toList();
+      } else {
+        _filteredRecords = widget.records;
+      }
+    });
+  }
+
   Future<void> _delete(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Record'),
-        content: const Text('Are you sure you want to delete this record? This action cannot be undone.'),
+        content: const Text('Are you sure you want to delete this record?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -83,7 +90,7 @@ class RecordsTabState extends State<RecordsTab> {
 
     if (confirm == true) {
       await _repo.deleteRecord(id);
-      _load();
+      widget.onDataChanged?.call(); // Refresh parent
     }
   }
 
@@ -93,17 +100,7 @@ class RecordsTabState extends State<RecordsTab> {
       record: record,
       onSave: (updated) async {
         await _repo.updateRecord(updated);
-        _load();
-      },
-    );
-  }
-
-  void showAddDialog() {
-    showAddEditRecordDialog(
-      context: context,
-      onSave: (newRecord) async {
-        await _repo.addRecord(newRecord);
-        _load();
+        widget.onDataChanged?.call(); // Refresh parent
       },
     );
   }
@@ -116,29 +113,20 @@ class RecordsTabState extends State<RecordsTab> {
       alreadyReceived: r.receivedQuantity,
       receiveDate: date,
     );
-    _load();
+    widget.onDataChanged?.call(); // Refresh parent
   }
 
   Future<void> _updateStatus(String id, String status) async {
     await _repo.updateStatus(
       recordId: id,
       status: status,
-      actualReturnDate:
-          status == 'Returned' ? DateTime.now().toIso8601String() : null,
+      actualReturnDate: status == 'Returned' ? DateTime.now().toIso8601String() : null,
     );
-    _load();
+    widget.onDataChanged?.call(); // Refresh parent
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_error != null) {
-      return Center(child: Text(_error!));
-    }
-
     if (_filteredRecords.isEmpty) {
       return const Center(child: Text('No records found'));
     }

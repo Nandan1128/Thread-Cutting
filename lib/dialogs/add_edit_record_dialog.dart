@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:test_app/data/vendor_repository.dart';
+import 'package:test_app/data/po_repository.dart';
 import '../models/record.dart';
+import '../models/po.dart';
 
 Future<void> showAddEditRecordDialog({
   required BuildContext context,
@@ -10,13 +12,14 @@ Future<void> showAddEditRecordDialog({
   final isEditing = record != null;
 
   final challanCtrl = TextEditingController(text: record?.challanNumber ?? '');
-  final poCtrl = TextEditingController(text: record?.poNumber ?? '');
   final clothCtrl = TextEditingController(text: record?.clothType ?? '');
   final qtyCtrl = TextEditingController(text: record?.quantity.toString() ?? '');
   final notesCtrl = TextEditingController(text: record?.notes ?? '');
 
   String? selectedVendorId = record?.vendorId;
+  String? selectedPoNumber = record?.poNumber;
   String selectedStatus = record?.status ?? 'Sent';
+  
   DateTime sentDate =
       record != null ? DateTime.parse(record.sentDate) : DateTime.now();
 
@@ -26,7 +29,9 @@ Future<void> showAddEditRecordDialog({
     expectedDate = DateTime.parse(record.expectedReturnDate!);
   }
 
+  // Load vendors and POs
   final vendors = await VendorRepository().fetchVendors();
+  final pos = await PORepository().fetchPOs();
 
   if (!context.mounted) return;
 
@@ -71,7 +76,6 @@ Future<void> showAddEditRecordDialog({
               const Divider(),
               const SizedBox(height: 12),
               
-              // Two column row for Challan and PO
               Row(
                 children: [
                   Expanded(
@@ -83,10 +87,21 @@ Future<void> showAddEditRecordDialog({
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildTextField(
-                      controller: poCtrl,
-                      label: 'PO Number',
-                      icon: Icons.assignment_outlined,
+                    child: DropdownButtonFormField<String>(
+                      value: selectedPoNumber,
+                      decoration: InputDecoration(
+                        labelText: 'Select PO',
+                        prefixIcon: const Icon(Icons.assignment_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      items: pos.map((p) => DropdownMenuItem(
+                        value: p.poNumber,
+                        child: Text(p.poNumber),
+                      )).toList(),
+                      onChanged: (val) => setState(() => selectedPoNumber = val),
                     ),
                   ),
                 ],
@@ -192,12 +207,18 @@ Future<void> showAddEditRecordDialog({
                       );
                       return;
                     }
+                    if (selectedPoNumber == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please select a PO Number')),
+                      );
+                      return;
+                    }
                     final newRecord = RecordModel(
                       id: record?.id ?? '',
                       date: record?.date ??
                           DateTime.now().toIso8601String().split('T')[0],
                       challanNumber: challanCtrl.text.trim(),
-                      poNumber: poCtrl.text.trim(),
+                      poNumber: selectedPoNumber,
                       clothType: clothCtrl.text.trim(),
                       quantity: int.tryParse(qtyCtrl.text) ?? 0,
                       vendorId: selectedVendorId!,

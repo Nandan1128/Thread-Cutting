@@ -29,6 +29,11 @@ class VendorsTabState extends State<VendorsTab> {
     });
   }
 
+  // Public refresh method
+  void refresh() {
+    _load();
+  }
+
   Future<void> _delete(String id) async {
     await _repo.deleteVendor(id);
     _load();

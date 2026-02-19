@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:test_app/models/record.dart';
+import 'package:test_app/data/vendor_repository.dart';
+import 'package:test_app/models/vendor.dart';
 import '../data/record_repository.dart';
 import '../widgets/record_card.dart';
 import '../widgets/dashboard_card.dart';
@@ -14,13 +16,16 @@ class ReportsTab extends StatefulWidget {
 
 class _ReportsTabState extends State<ReportsTab> {
   final _repo = RecordRepository();
+  final _vendorRepo = VendorRepository();
   List<RecordModel> _allRecords = [];
   List<RecordModel> _filteredRecords = [];
+  List<VendorModel> _vendors = [];
+  List<String> _pos = [];
   bool _isLoading = true;
 
   final _challanCtrl = TextEditingController();
-  final _poCtrl = TextEditingController();
-  final _vendorCtrl = TextEditingController();
+  String? _selectedPoNumber;
+  String? _selectedVendorName;
   DateTimeRange? _dateRange;
 
   @override
@@ -31,10 +36,23 @@ class _ReportsTabState extends State<ReportsTab> {
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
-    final records = await _repo.fetchRecords();
+    final results = await Future.wait([
+      _repo.fetchRecords(),
+      _vendorRepo.fetchVendors(),
+    ]);
     setState(() {
-      _allRecords = records;
-      _filteredRecords = records;
+      _allRecords = results[0] as List<RecordModel>;
+      _filteredRecords = _allRecords;
+      _vendors = results[1] as List<VendorModel>;
+      
+      // Extract unique PO numbers from records
+      _pos = _allRecords
+          .map((r) => r.poNumber ?? '')
+          .where((po) => po.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+        
       _isLoading = false;
     });
   }
@@ -43,14 +61,21 @@ class _ReportsTabState extends State<ReportsTab> {
     setState(() {
       _filteredRecords = _allRecords.where((r) {
         final matchChallan = r.challanNumber.contains(_challanCtrl.text.trim());
-        final matchPo = (r.poNumber ?? '').contains(_poCtrl.text.trim());
-        final matchVendor = (r.vendorName ?? '').toLowerCase().contains(_vendorCtrl.text.trim().toLowerCase());
         
+        // Match selected PO number from dropdown
+        final matchPo = _selectedPoNumber == null || 
+            (r.poNumber ?? '') == _selectedPoNumber;
+        
+        // Match selected vendor name from dropdown
+        final matchVendor = _selectedVendorName == null || 
+            (r.vendorName ?? '').toLowerCase() == _selectedVendorName!.toLowerCase();
+
         bool matchDate = true;
         if (_dateRange != null) {
           final recordDate = DateTime.parse(r.date ?? r.sentDate);
-          matchDate = recordDate.isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
-                      recordDate.isBefore(_dateRange!.end.add(const Duration(days: 1)));
+          matchDate = recordDate
+                  .isAfter(_dateRange!.start.subtract(const Duration(days: 1))) &&
+              recordDate.isBefore(_dateRange!.end.add(const Duration(days: 1)));
         }
 
         return matchChallan && matchPo && matchVendor && matchDate;
@@ -62,9 +87,12 @@ class _ReportsTabState extends State<ReportsTab> {
   Widget build(BuildContext context) {
     int totalQty = 0;
     int receivedQty = 0;
+    double totalAmount = 0;
+
     for (var r in _filteredRecords) {
       totalQty += r.quantity;
       receivedQty += r.receivedQuantity;
+      totalAmount += (r.receivedQuantity * (r.vendorRate ?? 0));
     }
     int pendingQty = totalQty - receivedQty;
 
@@ -91,16 +119,62 @@ class _ReportsTabState extends State<ReportsTab> {
                     child: _buildFilterField(_challanCtrl, 'Challan', Icons.tag),
                   ),
                   const SizedBox(width: 12),
+                  // PO Number Dropdown Filter
                   Expanded(
-                    child: _buildFilterField(_poCtrl, 'PO Number', Icons.assignment_outlined),
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedPoNumber,
+                      isDense: true,
+                      decoration: InputDecoration(
+                        labelText: 'Select PO',
+                        prefixIcon: const Icon(Icons.assignment_outlined, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('All POs')),
+                        ..._pos.map((po) => DropdownMenuItem(
+                          value: po,
+                          child: Text(po, overflow: TextOverflow.ellipsis),
+                        )).toList(),
+                      ],
+                      onChanged: (val) {
+                        setState(() => _selectedPoNumber = val);
+                        _applyFilters();
+                      },
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
+                  // Vendor Name Dropdown Filter
                   Expanded(
-                    child: _buildFilterField(_vendorCtrl, 'Vendor Name', Icons.person_outline),
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedVendorName,
+                      isDense: true,
+                      decoration: InputDecoration(
+                        labelText: 'Select Vendor',
+                        prefixIcon: const Icon(Icons.person_outline, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('All Vendors')),
+                        ..._vendors.map((v) => DropdownMenuItem(
+                          value: v.name,
+                          child: Text(v.name, overflow: TextOverflow.ellipsis),
+                        )).toList(),
+                      ],
+                      onChanged: (val) {
+                        setState(() => _selectedVendorName = val);
+                        _applyFilters();
+                      },
+                    ),
                   ),
                   const SizedBox(width: 12),
                   _buildDateButton(),
@@ -110,7 +184,7 @@ class _ReportsTabState extends State<ReportsTab> {
           ),
         ),
 
-        // Dynamic Dashboard Cards for Reports
+        // Dynamic Dashboard Cards
         const SizedBox(height: 16),
         SizedBox(
           height: 150,
@@ -119,6 +193,14 @@ class _ReportsTabState extends State<ReportsTab> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             physics: const BouncingScrollPhysics(),
             children: [
+              DashboardCard(
+                title: 'Total Amount',
+                value: '₹${totalAmount.toStringAsFixed(2)}',
+                subtitle: 'Based on Received',
+                bgColor: const Color(0xFFFFF3E0),
+                textColor: const Color(0xFFE65100),
+                icon: Icons.payments_outlined,
+              ),
               DashboardCard(
                 title: 'Total Quantity',
                 value: totalQty.toString(),
@@ -143,7 +225,7 @@ class _ReportsTabState extends State<ReportsTab> {
             ],
           ),
         ),
-        
+
         const Divider(height: 32),
 
         // Results Section
@@ -164,16 +246,16 @@ class _ReportsTabState extends State<ReportsTab> {
                             await _repo.deleteRecord(r.id);
                             _load();
                           },
-                          onEdit: () {}, 
+                          onEdit: () {},
                           onReceive: (qty, date) async {
-                             await _repo.receiveQuantity(
-                               recordId: r.id,
-                               newlyReceived: qty,
-                               totalQuantity: r.quantity,
-                               alreadyReceived: r.receivedQuantity,
-                               receiveDate: date,
-                             );
-                             _load();
+                            await _repo.receiveQuantity(
+                              recordId: r.id,
+                              newlyReceived: qty,
+                              totalQuantity: r.quantity,
+                              alreadyReceived: r.receivedQuantity,
+                              receiveDate: date,
+                            );
+                            _load();
                           },
                           onStatusChange: (s) async {
                             await _repo.updateStatus(recordId: r.id, status: s);
@@ -187,7 +269,8 @@ class _ReportsTabState extends State<ReportsTab> {
     );
   }
 
-  Widget _buildFilterField(TextEditingController ctrl, String label, IconData icon) {
+  Widget _buildFilterField(
+      TextEditingController ctrl, String label, IconData icon) {
     return TextField(
       controller: ctrl,
       onChanged: (_) => _applyFilters(),
@@ -207,9 +290,13 @@ class _ReportsTabState extends State<ReportsTab> {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: _dateRange == null ? Colors.grey.shade50 : Colors.indigo.withOpacity(0.1),
+        color: _dateRange == null
+            ? Colors.grey.shade50
+            : Colors.indigo.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _dateRange == null ? Colors.grey.shade400 : Colors.indigo),
+        border: Border.all(
+            color:
+                _dateRange == null ? Colors.grey.shade400 : Colors.indigo),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -226,7 +313,8 @@ class _ReportsTabState extends State<ReportsTab> {
                 _applyFilters();
               }
             },
-            icon: Icon(Icons.date_range, color: _dateRange == null ? Colors.grey : Colors.indigo),
+            icon: Icon(Icons.date_range,
+                color: _dateRange == null ? Colors.grey : Colors.indigo),
           ),
           if (_dateRange != null)
             IconButton(
