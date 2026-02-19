@@ -26,6 +26,7 @@ void main() async {
     return;
   }
 
+
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
