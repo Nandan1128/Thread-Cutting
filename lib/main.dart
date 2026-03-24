@@ -9,7 +9,6 @@ void main() async {
   const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
-
   if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
     runApp(MaterialApp(
       home: Scaffold(
@@ -25,7 +24,6 @@ void main() async {
     ));
     return;
   }
-
 
   await Supabase.initialize(
     url: supabaseUrl,

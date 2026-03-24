@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test_app/data/record_repository.dart';
 import 'package:test_app/data/vendor_repository.dart';
@@ -40,6 +41,7 @@ class _MainScreenState extends State<MainScreen>
   bool _isLoading = true;
   String? _selectedPo;
   String _currentSearchQuery = "";
+  DateTime? _lastBackPressTime;
 
   @override
   void initState() {
@@ -169,177 +171,206 @@ class _MainScreenState extends State<MainScreen>
     int sent = _allRecords.where((r) => r.status.toLowerCase() == 'sent' || r.status.toLowerCase() == 'in progress').length;
     int received = _allRecords.where((r) => r.status.toLowerCase() == 'returned' || r.status.toLowerCase() == 'completed').length;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Threat Management',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+
+        if (_selectedPo != null) {
+          setState(() {
+            _selectedPo = null;
+            _searchController.clear();
+            _currentSearchQuery = "";
+          });
+          return;
+        }
+
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || 
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
             ),
-            Text(
-              'Track and manage cloth pieces',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
+          );
+          return;
+        }
+        SystemNavigator.pop();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F6FA),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Threat Management',
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Track and manage cloth pieces',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout, color: Colors.black),
+              onPressed: _logout,
+            )
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: _logout,
-          )
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          bool isDesktop = constraints.maxWidth > 800;
-          return NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) {
-              return [
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 160,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          physics: const BouncingScrollPhysics(),
-                          children: [
-                            DashboardCard(
-                              title: 'Total Record',
-                              value: total.toString(),
-                              subtitle: 'All entries',
-                              bgColor: const Color(0xFFE8EDFF),
-                              textColor: const Color(0xFF3F51B5),
-                            ),
-                            DashboardCard(
-                              title: 'Sent',
-                              value: sent.toString(),
-                              subtitle: 'In process',
-                              bgColor: const Color(0xFFFFF3E0),
-                              textColor: const Color(0xFFE65100),
-                            ),
-                            DashboardCard(
-                              title: 'Received',
-                              value: received.toString(),
-                              subtitle: 'Completed',
-                              bgColor: const Color(0xFFE8F5E9),
-                              textColor: const Color(0xFF2E7D32),
-                            ),
-                          ],
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            bool isDesktop = constraints.maxWidth > 800;
+            return NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 160,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            physics: const BouncingScrollPhysics(),
+                            children: [
+                              DashboardCard(
+                                title: 'Total Record',
+                                value: total.toString(),
+                                subtitle: 'All entries',
+                                bgColor: const Color(0xFFE8EDFF),
+                                textColor: const Color(0xFF3F51B5),
+                              ),
+                              DashboardCard(
+                                title: 'Sent',
+                                value: sent.toString(),
+                                subtitle: 'In process',
+                                bgColor: const Color(0xFFFFF3E0),
+                                textColor: const Color(0xFFE65100),
+                              ),
+                              DashboardCard(
+                                title: 'Received',
+                                value: received.toString(),
+                                subtitle: 'Completed',
+                                bgColor: const Color(0xFFE8F5E9),
+                                textColor: const Color(0xFF2E7D32),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: isDesktop ? 600 : double.infinity),
-                            child: TextField(
-                              controller: _searchController,
-                              onChanged: _onSearchChanged,
-                              decoration: InputDecoration(
-                                prefixIcon: const Icon(Icons.search, color: Colors.indigo),
-                                hintText: _selectedPo == null ? 'Search POs...' : 'Search records in PO...',
-                                filled: true,
-                                fillColor: Colors.white,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: BorderSide.none,
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: Colors.indigo, width: 1),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: isDesktop ? 600 : double.infinity),
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: _onSearchChanged,
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.search, color: Colors.indigo),
+                                  hintText: _selectedPo == null ? 'Search POs...' : 'Search records in PO...',
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(color: Colors.indigo, width: 1),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _SliverAppBarDelegate(
-                    TabBar(
-                      controller: _tabController,
-                      labelColor: Colors.indigo,
-                      unselectedLabelColor: Colors.grey,
-                      indicatorColor: Colors.indigo,
-                      indicatorWeight: 3,
-                      indicatorSize: TabBarIndicatorSize.label,
-                      tabs: const [
-                        Tab(text: 'PO Numbers'),
-                        Tab(text: 'Vendors'),
-                        Tab(text: 'Reports'),
                       ],
                     ),
                   ),
-                ),
-              ];
-            },
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildPoListView(isDesktop),
-                VendorsTab(key: _vendorsKey, isAdmin: widget.isAdmin),
-                ReportsTab(isAdmin: widget.isAdmin),
-              ],
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _SliverAppBarDelegate(
+                      TabBar(
+                        controller: _tabController,
+                        labelColor: Colors.indigo,
+                        unselectedLabelColor: Colors.grey,
+                        indicatorColor: Colors.indigo,
+                        indicatorWeight: 3,
+                        indicatorSize: TabBarIndicatorSize.label,
+                        tabs: const [
+                          Tab(text: 'PO Numbers'),
+                          Tab(text: 'Vendors'),
+                          Tab(text: 'Reports'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ];
+              },
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildPoListView(isDesktop),
+                  VendorsTab(key: _vendorsKey, isAdmin: widget.isAdmin),
+                  ReportsTab(isAdmin: widget.isAdmin),
+                ],
+              ),
+            );
+          }
+        ),
+        floatingActionButton: SpeedDial(
+          icon: Icons.add,
+          activeIcon: Icons.close,
+          backgroundColor: Colors.indigo,
+          foregroundColor: Colors.white,
+          activeBackgroundColor: Colors.redAccent,
+          activeForegroundColor: Colors.white,
+          visible: true,
+          closeManually: false,
+          curve: Curves.bounceIn,
+          overlayColor: Colors.black,
+          overlayOpacity: 0.5,
+          elevation: 8.0,
+          shape: const CircleBorder(),
+          children: [
+            SpeedDialChild(
+              child: const Icon(Icons.person_add_alt_1),
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              label: 'Add Vendor',
+              labelStyle: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+              onTap: _showAddVendorDialog,
             ),
-          );
-        }
-      ),
-      floatingActionButton: SpeedDial(
-        icon: Icons.add,
-        activeIcon: Icons.close,
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        activeBackgroundColor: Colors.redAccent,
-        activeForegroundColor: Colors.white,
-        visible: true,
-        closeManually: false,
-        curve: Curves.bounceIn,
-        overlayColor: Colors.black,
-        overlayOpacity: 0.5,
-        elevation: 8.0,
-        shape: const CircleBorder(),
-        children: [
-          SpeedDialChild(
-            child: const Icon(Icons.person_add_alt_1),
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            label: 'Add Vendor',
-            labelStyle: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
-            onTap: _showAddVendorDialog,
-          ),
-          SpeedDialChild(
-            child: const Icon(Icons.inventory_2),
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            label: 'Add Record',
-            labelStyle: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
-            onTap: _showAddRecordDialog,
-          ),
-          SpeedDialChild(
-            child: const Icon(Icons.assignment),
-            backgroundColor: Colors.indigoAccent,
-            foregroundColor: Colors.white,
-            label: 'Add PO Number',
-            labelStyle: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
-            onTap: _showAddPODialog,
-          ),
-        ],
+            SpeedDialChild(
+              child: const Icon(Icons.inventory_2),
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              label: 'Add Record',
+              labelStyle: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+              onTap: _showAddRecordDialog,
+            ),
+            SpeedDialChild(
+              child: const Icon(Icons.assignment),
+              backgroundColor: Colors.indigoAccent,
+              foregroundColor: Colors.white,
+              label: 'Add PO Number',
+              labelStyle: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
+              onTap: _showAddPODialog,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -439,6 +470,17 @@ class _MainScreenState extends State<MainScreen>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (po.color != null && po.color!.isNotEmpty)
+                        Text(
+                          po.color!,
+                          style: TextStyle(
+                            fontSize: isDesktop ? 12 : 11,
+                            color: Colors.grey[700],
+                            fontStyle: FontStyle.italic
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       const Divider(height: 16),
                       _buildPoStatSmall('Total', po.totalQuantity.toString(), Colors.blue, isDesktop),
                       _buildPoStatSmall('Sent', sent.toString(), Colors.orange, isDesktop),

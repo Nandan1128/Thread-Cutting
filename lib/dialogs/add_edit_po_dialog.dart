@@ -8,6 +8,7 @@ Future<void> showAddEditPODialog({
 }) {
   final poCtrl = TextEditingController(text: po?.poNumber ?? '');
   final qtyCtrl = TextEditingController(text: po?.totalQuantity.toString() ?? '');
+  final colorCtrl = TextEditingController(text: po?.color ?? '');
 
   final isEditing = po != null;
 
@@ -61,6 +62,17 @@ Future<void> showAddEditPODialog({
           ),
           const SizedBox(height: 16),
           TextField(
+            controller: colorCtrl,
+            decoration: InputDecoration(
+              labelText: 'Color',
+              prefixIcon: const Icon(Icons.palette_outlined),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
             controller: qtyCtrl,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
@@ -92,6 +104,7 @@ Future<void> showAddEditPODialog({
                   id: po?.id ?? '',
                   poNumber: poCtrl.text.trim(),
                   totalQuantity: int.tryParse(qtyCtrl.text) ?? 0,
+                  color: colorCtrl.text.trim(),
                   createdAt: po?.createdAt ?? DateTime.now().toIso8601String(),
                 );
                 onSave(newPo);
