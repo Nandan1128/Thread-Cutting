@@ -42,6 +42,7 @@ class _MainScreenState extends State<MainScreen>
   String? _selectedPo;
   String _currentSearchQuery = "";
   DateTime? _lastBackPressTime;
+  bool _showCompletedPos = false;
 
   @override
   void initState() {
@@ -270,28 +271,59 @@ class _MainScreenState extends State<MainScreen>
                           child: Center(
                             child: ConstrainedBox(
                               constraints: BoxConstraints(maxWidth: isDesktop ? 600 : double.infinity),
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: _onSearchChanged,
-                                decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.search, color: Colors.indigo),
-                                  hintText: _selectedPo == null ? 'Search POs...' : 'Search records in PO...',
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _searchController,
+                                      onChanged: _onSearchChanged,
+                                      decoration: InputDecoration(
+                                        prefixIcon: const Icon(Icons.search, color: Colors.indigo),
+                                        hintText: _selectedPo == null ? 'Search POs...' : 'Search records in PO...',
+                                        filled: true,
+                                        fillColor: Colors.white,
+                                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                          borderSide: const BorderSide(color: Colors.indigo, width: 1),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    borderSide: const BorderSide(color: Colors.indigo, width: 1),
-                                  ),
-                                ),
+                                  if (_selectedPo == null && _tabController.index == 0)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 8.0),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const SizedBox(width: 8),
+                                            const Text('Show Done', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo)),
+                                            Checkbox(
+                                              value: _showCompletedPos,
+                                              activeColor: Colors.indigo,
+                                              onChanged: (val) {
+                                                setState(() {
+                                                  _showCompletedPos = val ?? false;
+                                                });
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ),
@@ -384,8 +416,6 @@ class _MainScreenState extends State<MainScreen>
       return const Center(child: Text('No PO Numbers found. Add one using the + button.'));
     }
 
-    final filteredPos = _allPos.where((po) => po.poNumber.toLowerCase().contains(_currentSearchQuery)).toList();
-
     if (_selectedPo != null) {
       return Column(
         children: [
@@ -417,6 +447,32 @@ class _MainScreenState extends State<MainScreen>
           ),
         ],
       );
+    }
+
+    final filteredPos = _allPos.where((po) {
+      final matchesSearch = po.poNumber.toLowerCase().contains(_currentSearchQuery);
+      
+      final poRecords = _allRecords.where((r) => r.poNumber == po.poNumber);
+      int received = poRecords.fold(0, (sum, r) => sum + r.receivedQuantity);
+      int pending = po.totalQuantity - received;
+      bool isCompleted = pending <= 0;
+
+      if (_showCompletedPos) {
+        return matchesSearch && isCompleted;
+      } else {
+        return matchesSearch && !isCompleted;
+      }
+    }).toList();
+
+    if (filteredPos.isEmpty) {
+       return Center(
+         child: Text(
+           _showCompletedPos 
+             ? 'No completed POs found.' 
+             : 'No pending POs found. Check "Show Done" to see completed ones.',
+           textAlign: TextAlign.center,
+         )
+       );
     }
 
     return GridView.builder(
