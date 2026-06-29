@@ -11,8 +11,8 @@ Designed for **Admin** and **Supervisor** roles with role-based access control.
 <img width="380" height="800" alt="Cut Flow Main Screen" src="https://github.com/user-attachments/assets/e94ccfee-25e5-4ccb-86bb-980dea1ed59e" />
 
 
-
-It allows:
+<br><br>
+It allows:<br>
 Tracking cloth pieces sent for cutting
 Monitoring return status
 Managing vendors
