@@ -4,6 +4,13 @@ Thread Cutting Manager is a lightweight production tracking solution designed fo
 A cross-platform application built with **Flutter** and **Supabase** to track, manage, and monitor cloth cutting records and vendors.  
 Designed for **Admin** and **Supervisor** roles with role-based access control.
 
+## Screen Shots
+
+<img width="1080" height="2400" alt="CutFlow Splash Screen" src="https://github.com/user-attachments/assets/658f929b-96b1-4b07-8da3-f320ed160555" />
+<img width="1080" height="2400" alt="CutFLow Login Screen" src="https://github.com/user-attachments/assets/f09161da-b637-4e66-9614-1d5eb33ecb1b" />
+<img width="1280" height="2856" alt="Cut Flow Main Screen" src="https://github.com/user-attachments/assets/e94ccfee-25e5-4ccb-86bb-980dea1ed59e" />
+
+
 
 It allows:
 Tracking cloth pieces sent for cutting
