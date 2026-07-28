@@ -2,7 +2,7 @@
 Thread Cutting Manager is a lightweight production tracking solution designed for garment and textile businesses.
 
 A cross-platform application built with **Flutter** and **Supabase** to track, manage, and monitor cloth cutting records and vendors.  
-Designed for **Admin** and **Supervisor** roles with role-based access control..
+Designed for **Admin** and **Supervisor** roles with role-based access control.
 
 ## Live Demo 
 https://github.com/user-attachments/assets/dab667bb-8833-4015-a488-47221697aacc
